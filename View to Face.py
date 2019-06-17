@@ -3,7 +3,7 @@ bl_info = {
     "author": "Ben Hopkins",
     "version": (1, 0),
     "blender": (2, 80, 0),
-    "location": "View3D > View > Viewpoint > Face",
+    "location": "View3D > View > Viewpoint > View Face",
     "description": "Point view towards the current face with better roll.",
     "warning": "",
     "wiki_url": "",
@@ -34,10 +34,9 @@ class VIEW_MT_view_face(bpy.types.Operator):
             return {'CANCELLED'}
 
         obj = context.active_object
-        rv3d = context.space_data.region_3d
-        print(rv3d.view_rotation.to_euler())
-        
+        rv3d = context.space_data.region_3d        
         bm = bmesh.from_edit_mesh(data)
+        
         if bm.faces.active is not None:
             # position the view
             v = obj.matrix_world @ bm.faces.active.calc_center_median()
