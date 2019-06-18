@@ -1,13 +1,13 @@
 bl_info = {
     "name": "Unwrap Face Pixel Scaled",
     "author": "Ben Hopkins",
-    "version": (1, 0),
+    "version": (1, 1),
     "blender": (2, 80, 0),
     "location": "View3D > UV > Unwrap Pixel",
     "description": "Unwraps a face with the desired pixel scale.",
     "warning": "",
     "wiki_url": "",
-    "category": "Viewpoint",
+    "category": "UV",
 }
 
 # TODO: Unwrap multiple faces together
@@ -68,62 +68,62 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
         bm.faces.ensure_lookup_table()
         uv_layer = bm.loops.layers.uv[0]
         
-        if bm.faces.active is not None:
-            active = bm.faces.active
-            center = active.calc_center_median()
-            loops = active.loops
-            
-            # find the bottom two verticies
-            nLoops = len(loops)
-            firstBottomLoop = 0
-            bottomValue = loopSortValue(loops, 0)
-            for li in range(nLoops):
-                testValue = loopSortValue(loops, li)
-                if testValue < bottomValue:
-                    bottomValue = testValue
-                    firstBottomLoop = li;
-            
-            # the "x-axis" is the bottom verticies vector
-            secondBottomLoop = firstBottomLoop + 1
-            if secondBottomLoop == len(loops):
-                secondBottomLoop = 0
-            x = loops[secondBottomLoop].vert.co - loops[firstBottomLoop].vert.co
-            x.normalize()
-            
-            # get the "y-axis" from the bottom verticies vector
-            y = x.cross(active.normal)
-            y.normalize()
-            y.negate()
-            
-            # find texture scale and center of current UV screen area
-            offset = [0.5, 0.5]
-            scale = self.pixelScale / 128.0
-            roundSize = 128.0
-            for area in bpy.context.screen.areas :
-                if area.type == 'IMAGE_EDITOR':
-                    currentTexture = area.spaces.active.image
-                    scale = self.pixelScale / currentTexture.size[1]
-                    roundSize = currentTexture.size[1]
-                    for region in area.regions:
-                        if region.type == 'WINDOW':
-                            offset = region.view2d.region_to_view(region.width / 2, region.height / 2)
-            
-            # calculate UVs
-            for li in range(nLoops):
-                loop = loops[li]
-                d = loop.vert.co - center
-                if self.correctForScale:
-                    d.x *= objectScale.x
-                    d.y *= objectScale.y
-                    d.z *= objectScale.z
-                u = d.dot(x) * scale + offset[0]
-                v = d.dot(y) * scale + offset[1]
-                uv =   (round(u * roundSize) / roundSize,
-                        round(v * roundSize) / roundSize)
-                loop[uv_layer].uv = uv
-        else:
+        if bm.faces.active is None:
             self.report({'INFO'}, 'Must have face selected')
             return {'CANCELLED'}
+
+        active = bm.faces.active
+        center = active.calc_center_median()
+        loops = active.loops
+        
+        # find the bottom two verticies
+        nLoops = len(loops)
+        firstBottomLoop = 0
+        bottomValue = loopSortValue(loops, 0)
+        for li in range(nLoops):
+            testValue = loopSortValue(loops, li)
+            if testValue < bottomValue:
+                bottomValue = testValue
+                firstBottomLoop = li
+        
+        # the "x-axis" is the bottom verticies vector
+        secondBottomLoop = firstBottomLoop + 1
+        if secondBottomLoop == len(loops):
+            secondBottomLoop = 0
+        x = loops[secondBottomLoop].vert.co - loops[firstBottomLoop].vert.co
+        x.normalize()
+        
+        # get the "y-axis" from the bottom verticies vector
+        y = x.cross(active.normal)
+        y.normalize()
+        y.negate()
+        
+        # find texture scale and center of current UV screen area
+        offset = [0.5, 0.5]
+        scale = self.pixelScale / 128.0
+        roundSize = 128.0
+        for area in bpy.context.screen.areas :
+            if area.type == 'IMAGE_EDITOR':
+                currentTexture = area.spaces.active.image
+                scale = self.pixelScale / currentTexture.size[1]
+                roundSize = currentTexture.size[1]
+                for region in area.regions:
+                    if region.type == 'WINDOW':
+                        offset = region.view2d.region_to_view(region.width / 2, region.height / 2)
+        
+        # calculate UVs
+        for li in range(nLoops):
+            loop = loops[li]
+            d = loop.vert.co - center
+            if self.correctForScale:
+                d.x *= objectScale.x
+                d.y *= objectScale.y
+                d.z *= objectScale.z
+            u = d.dot(x) * scale + offset[0]
+            v = d.dot(y) * scale + offset[1]
+            uv =   (round(u * roundSize) / roundSize,
+                    round(v * roundSize) / roundSize)
+            loop[uv_layer].uv = uv            
         
         bmesh.update_edit_mesh(mesh, True)
         
