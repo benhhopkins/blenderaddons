@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Unwrap Face Pixel Scaled",
     "author": "Ben Hopkins",
-    "version": (1, 1),
+    "version": (1, 2),
     "blender": (2, 80, 0),
     "location": "View3D > UV > Unwrap Pixel",
     "description": "Unwraps a face with the desired pixel scale.",
@@ -45,6 +45,13 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
         default=True,
         subtype='NONE',
         description="Corrects the UVs as if the object has a scale of 1.",
+    )
+
+    alignedToGrid: bpy.props.BoolProperty(
+        name="Aligned to Grid",
+        default=True,
+        subtype='NONE',
+        description="Align the generated UVs to the pixel scale",
     )
 
     @classmethod
@@ -110,6 +117,8 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
                 for region in area.regions:
                     if region.type == 'WINDOW':
                         offset = region.view2d.region_to_view(region.width / 2, region.height / 2)
+                        if self.alignedToGrid:
+                            offset = [math.floor(offset[0] * self.pixelScale) / self.pixelScale, math.floor(offset[1] * self.pixelScale) / self.pixelScale]
         
         # calculate UVs
         for li in range(nLoops):
