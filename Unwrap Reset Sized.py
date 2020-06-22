@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Unwrap Reset Size",
     "author": "Ben Hopkins",
-    "version": (1, 0),
+    "version": (1, 1),
     "blender": (2, 80, 0),
     "location": "View3D > UV > Reset Sized",
     "description": "Resets face UVs with an input size.",

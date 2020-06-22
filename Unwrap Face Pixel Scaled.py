@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Unwrap Face Pixel Scaled",
     "author": "Ben Hopkins",
-    "version": (1, 2),
+    "version": (1, 3),
     "blender": (2, 80, 0),
     "location": "View3D > UV > Unwrap Pixel",
     "description": "Unwraps a face with the desired pixel scale.",
@@ -74,6 +74,9 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
         uv_layer = bm.loops.layers.uv[0]
 
         for face in bm.faces:
+            if not face.select:
+                continue
+            
             center = face.calc_center_median()
             loops = face.loops
             
