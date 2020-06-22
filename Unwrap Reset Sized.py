@@ -1,10 +1,10 @@
 bl_info = {
-    "name": "Unwrap Face Pixel Scaled",
+    "name": "Unwrap Reset Size",
     "author": "Ben Hopkins",
-    "version": (1, 2),
+    "version": (1, 0),
     "blender": (2, 80, 0),
-    "location": "View3D > UV > Unwrap Pixel",
-    "description": "Unwraps a face with the desired pixel scale.",
+    "location": "View3D > UV > Reset Sized",
+    "description": "Resets face UVs with an input size.",
     "warning": "",
     "wiki_url": "",
     "category": "UV",
@@ -25,31 +25,16 @@ def loopSortValue(loops, nLoop):
         value = p1.x + p2.x + 100 * (p1.y + p2.y) + 1000 * (p1.z + p2.z)
         return value
 
-class UV_MT_unwrap_pixel(bpy.types.Operator):
-    """Point view towards the current face"""
-    bl_idname = "view3d.unwrap_pixel"
-    bl_label = "Unwrap Pixel"
+class UV_MT_reset_sized(bpy.types.Operator):
+    bl_idname = "view3d.reset_sized"
+    bl_label = "Reset Sized"
     bl_options = {'REGISTER', 'UNDO'}
     
-    pixelScale: bpy.props.FloatProperty(
-        name="Pixel Scale",
-        default=32,
+    pixelSize: bpy.props.FloatProperty(
+        name="Reset Pixel Length",
+        default=6,
         subtype='NONE',
         description="Pixels per meter",
-    )
-    
-    correctForScale: bpy.props.BoolProperty(
-        name="Correct for unapplied Object Scale",
-        default=True,
-        subtype='NONE',
-        description="Corrects the UVs as if the object has a scale of 1.",
-    )
-
-    alignedToGrid: bpy.props.BoolProperty(
-        name="Aligned to Grid",
-        default=True,
-        subtype='NONE',
-        description="Align the generated UVs to the pixel scale",
     )
 
     @classmethod
@@ -63,20 +48,19 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
             self.report({'INFO'}, 'Must be in edit mode')
             return {'CANCELLED'}        
 
-        objectScale = context.edit_object.scale
-        if objectScale.x != 1.0 and objectScale.y != 1.0 and objectScale.z != 1.0:
-            self.report({'WARNING'}, 'Warning: Object scale is not 1.0!')
-
         bm = bmesh.from_edit_mesh(mesh)
         
         bm = bmesh.from_edit_mesh(mesh)
         bm.faces.ensure_lookup_table()
         uv_layer = bm.loops.layers.uv[0]
-
+        
         for face in bm.faces:
+            if not face.select:
+                continue
+            
             center = face.calc_center_median()
             loops = face.loops
-            
+        
             # find the bottom two verticies
             nLoops = len(loops)
             firstBottomLoop = 0
@@ -86,69 +70,62 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
                 if testValue < bottomValue:
                     bottomValue = testValue
                     firstBottomLoop = li
-            
+        
             # the "x-axis" is the bottom verticies vector
             secondBottomLoop = firstBottomLoop + 1
             if secondBottomLoop == len(loops):
                 secondBottomLoop = 0
             x = loops[secondBottomLoop].vert.co - loops[firstBottomLoop].vert.co
             x.normalize()
-            
+        
             # get the "y-axis" from the bottom verticies vector
             y = x.cross(face.normal)
             y.normalize()
             y.negate()
-            
+        
             # find texture scale and center of current UV screen area
             offset = [0.5, 0.5]
-            scale = self.pixelScale / 128.0
-            roundSize = 128.0
+            scale = self.pixelSize / 128.0
+            roundSize = 128
             for area in bpy.context.screen.areas :
                 if area.type == 'IMAGE_EDITOR':
                     currentTexture = area.spaces.active.image
-                    scale = self.pixelScale / currentTexture.size[1]
+                    scale = self.pixelSize / currentTexture.size[1]
                     roundSize = currentTexture.size[1]
                     for region in area.regions:
                         if region.type == 'WINDOW':
                             offset = region.view2d.region_to_view(region.width / 2, region.height / 2)
-                            if self.alignedToGrid:
-                                halfScale = self.pixelScale / 2
-                                offset = [math.floor(offset[0] * halfScale) / halfScale, math.floor(offset[1] * halfScale) / halfScale]
-            
+        
             # calculate UVs
             for li in range(nLoops):
                 loop = loops[li]
                 d = loop.vert.co - center
-                if self.correctForScale:
-                    d.x *= objectScale.x
-                    d.y *= objectScale.y
-                    d.z *= objectScale.z
-                u = d.dot(x) * scale + offset[0]
-                v = d.dot(y) * scale + offset[1]
+                u = min(max(round(d.dot(x) * 100), -1), 1) * scale / 2 + offset[0]
+                v = min(max(round(d.dot(y) * 100), -1), 1) * scale / 2 + offset[1]
                 uv =   (round(u * roundSize) / roundSize,
                         round(v * roundSize) / roundSize)
-                loop[uv_layer].uv = uv            
+                loop[uv_layer].uv = uv       
             
             bmesh.update_edit_mesh(mesh, True)
-        
+            
         return {'FINISHED'}
 
 
 # Registration
 
-def menu_func_UV_MT_unwrap_pixel(self, context):
-    self.layout.operator(UV_MT_unwrap_pixel.bl_idname,
-                        text=UV_MT_unwrap_pixel.bl_label)
+def menu_func_UV_MT_unwrap_reset_sized(self, context):
+    self.layout.operator(UV_MT_reset_sized.bl_idname,
+                        text=UV_MT_reset_sized.bl_label)
 
 
 def register():
-    bpy.utils.register_class(UV_MT_unwrap_pixel)
-    bpy.types.VIEW3D_MT_uv_map.append(menu_func_UV_MT_unwrap_pixel)
+    bpy.utils.register_class(UV_MT_reset_sized)
+    bpy.types.VIEW3D_MT_uv_map.append(menu_func_UV_MT_unwrap_reset_sized)
 
 
 def unregister():
-    bpy.utils.unregister_class(UV_MT_unwrap_pixel)
-    bpy.types.VIEW3D_MT_uv_map.remove(menu_func_UV_MT_unwrap_pixel)
+    bpy.utils.unregister_class(UV_MT_reset_sized)
+    bpy.types.VIEW3D_MT_uv_map.remove(menu_func_UV_MT_unwrap_reset_sized)
 
 
 if __name__ == "__main__":
