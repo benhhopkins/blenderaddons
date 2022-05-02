@@ -2,7 +2,7 @@ bl_info = {
     "name": "Unwrap Face Pixel Scaled",
     "author": "Ben Hopkins",
     "version": (1, 3),
-    "blender": (2, 80, 0),
+    "blender": (3, 0, 0),
     "location": "View3D > UV > Unwrap Pixel",
     "description": "Unwraps a face with the desired pixel scale.",
     "warning": "",
@@ -132,7 +132,7 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
                         round(v * roundSize) / roundSize)
                 loop[uv_layer].uv = uv            
             
-            bmesh.update_edit_mesh(mesh, True)
+            bmesh.update_edit_mesh(mesh)
         
         return {'FINISHED'}
 
