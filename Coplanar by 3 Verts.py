@@ -84,7 +84,7 @@ class MESH_OT_3points_flat_trim(bpy.types.Operator):
             bm.to_mesh(me)
             bm.free()
         else:
-            bmesh.update_edit_mesh(me, True)
+            bmesh.update_edit_mesh(me)
             
         return {'FINISHED'}
         
