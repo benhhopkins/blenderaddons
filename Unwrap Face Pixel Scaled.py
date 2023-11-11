@@ -51,6 +51,13 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
         subtype='NONE',
         description="Align the generated UVs to the pixel scale",
     )
+    
+    buffer: bpy.props.FloatProperty(
+        name="Buffer",
+        default=4,
+        subtype='NONE',
+        description="Offset between UV faces",
+    )
 
     @classmethod
     def poll(cls, context):
@@ -66,13 +73,12 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
         objectScale = context.edit_object.scale
         if objectScale.x != 1.0 and objectScale.y != 1.0 and objectScale.z != 1.0:
             self.report({'WARNING'}, 'Warning: Object scale is not 1.0!')
-
-        bm = bmesh.from_edit_mesh(mesh)
         
         bm = bmesh.from_edit_mesh(mesh)
         bm.faces.ensure_lookup_table()
         uv_layer = bm.loops.layers.uv[0]
 
+        multifaceOffset = 0
         for face in bm.faces:
             if not face.select:
                 continue
@@ -80,7 +86,7 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
             center = face.calc_center_median()
             loops = face.loops
             
-            # find the bottom two verticies
+            # find the bottom two vertices
             nLoops = len(loops)
             firstBottomLoop = 0
             bottomValue = loopSortValue(loops, 0)
@@ -90,14 +96,14 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
                     bottomValue = testValue
                     firstBottomLoop = li
             
-            # the "x-axis" is the bottom verticies vector
+            # the "x-axis" is the bottom vertices vector
             secondBottomLoop = firstBottomLoop + 1
             if secondBottomLoop == len(loops):
                 secondBottomLoop = 0
             x = loops[secondBottomLoop].vert.co - loops[firstBottomLoop].vert.co
             x.normalize()
             
-            # get the "y-axis" from the bottom verticies vector
+            # get the "y-axis" from the bottom vertices vector
             y = x.cross(face.normal)
             y.normalize()
             y.negate()
@@ -119,6 +125,7 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
                                 offset = [math.floor(offset[0] * halfScale) / halfScale, math.floor(offset[1] * halfScale) / halfScale]
             
             # calculate UVs
+            maxU = 0
             for li in range(nLoops):
                 loop = loops[li]
                 d = loop.vert.co - center
@@ -126,11 +133,13 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
                     d.x *= objectScale.x
                     d.y *= objectScale.y
                     d.z *= objectScale.z
-                u = d.dot(x) * scale + offset[0]
+                u = d.dot(x) * scale + offset[0] + multifaceOffset
                 v = d.dot(y) * scale + offset[1]
                 uv =   (round(u * roundSize) / roundSize,
                         round(v * roundSize) / roundSize)
-                loop[uv_layer].uv = uv            
+                loop[uv_layer].uv = uv
+                maxU = max(maxU, d.dot(x) * scale)
+            multifaceOffset += 2 * maxU + self.buffer / currentTexture.size[1]
             
             bmesh.update_edit_mesh(mesh)
         
