@@ -140,6 +140,8 @@ class UV_MT_unwrap_pixel(bpy.types.Operator):
                 loop[uv_layer].uv = uv
                 maxU = max(maxU, d.dot(x) * scale)
             multifaceOffset += 2 * maxU + self.buffer / currentTexture.size[1]
+            if(self.buffer == 0):
+                multifaceOffset = 0
             
             bmesh.update_edit_mesh(mesh)
         
